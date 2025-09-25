@@ -1,0 +1,2133 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <!-- INSERTED_BY_TK_SERVER:HEAD_COMMENT -->
+    <!-- TODO: Kommentar / xxxVersionshinweis eintragen - siehe Anfang body :-)  -->
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <script src="js/jq/jquery-3.7.1.min.js"></script>
+    <link rel="stylesheet" href="css/chessboard-1.0.0.css">
+    <script src="js/chess.js"></script>
+    <script src="js/chessboard-1.0.0.js"></script>
+    <script src="js/mobile-pointer-shim.js" defer></script>
+
+   
+
+    <!-- in your HTML -->
+<script type="module">
+  import { evaluationComments } from './evaluation_comments_extended.js';
+
+  // if the rest of your app is non-module/global code, expose it:
+  window.evaluationComments = evaluationComments;
+</script>
+
+ 
+
+    <!--
+    <link rel="stylesheet" href="js/controls_styles1.css">
+-->
+    <style>
+
+/* Prevent browser pan/zoom inside the board only */
+#chessboard, #chessboard * {
+  touch-action: none;          /* critical on Android/Chromium */
+  -ms-touch-action: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+#chessboard { overscroll-behavior: contain; }
+
+
+
+        body {
+            font-family: 'Comic Sans MS', cursive, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+          
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: linear-gradient(135deg, #d1d7f6 0%, #ceadef 100%);
+          
+          background: linear-gradient(135deg, #eaecf7 0%, #f3ebfb 100%);
+            
+          min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 500px 1fr;
+            gap: 30px;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .board-container {
+           
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #startPosition {
+            width: 70px;
+            height: 30px;
+            font-size: 12px;
+            padding: 2px;
+            box-sizing: border-box;
+        }
+
+        #evalBar.positive {
+            background: #2ecc71;
+        }
+
+        #evalBar.negative {
+            background: #e74c3c;
+        }
+
+        #chessboard {
+            width: 402px;
+            height: 402px;
+            border: 3px solid #8B4513;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            position: relative;
+        }
+
+        .chessboard-63f37 {
+            width: 402px !important;
+            height: 402px !important;
+        }
+
+        .square-55d63 {
+            width: 50px !important;
+            height: 50px !important;
+        }
+
+        .piece-417db {
+            width: 50px !important;
+            height: 50px !important;
+            background-size: contain !important;
+            background-repeat: no-repeat !important;
+            background-position: center !important;
+        }
+
+        .white-1e1d7 {
+            background-color: #f0d9b5 !important;
+        }
+
+        .black-3c85d {
+            background-color: #b58863 !important;
+        }
+
+        .highlight1-32417 {
+            background-color: rgba(255, 255, 0, 0.4) !important;
+            box-shadow: inset 0 0 10px rgba(255, 255, 0, 0.8) !important;
+        }
+
+        .highlight2-9c5d2 {
+            background-color: rgba(0, 255, 0, 0.4) !important;
+            box-shadow: inset 0 0 10px rgba(0, 255, 0, 0.8) !important;
+        }
+
+        .square-highlight-green {
+            background-color: rgba(0, 255, 0, 0.5) !important;
+        }
+
+        .square-highlight-red {
+            background-color: rgba(255, 0, 0, 0.5) !important;
+        }
+
+        .square-highlight-blue {
+            background-color: rgba(0, 0, 255, 0.5) !important;
+        }
+
+        .square-highlight-yellow {
+            background-color: rgba(255, 255, 0, 0.6) !important;
+        }
+
+        .arrow-overlay {
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 402px !important;
+            height: 402px !important;
+            pointer-events: none !important;
+            z-index: 10 !important;
+        }
+
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .load-custom-btn {
+            background: linear-gradient(45deg, #FF6B35, #F7931E);
+        }
+
+        .analysis-panel {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            border: 2px solid #e9ecef;
+        }
+
+        .explanation {
+            background: linear-gradient(135deg, #FFE4B5, #F5DEB3);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 15px 0;
+            border-left: 6px solid #FF6B35;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+
+        .puzzle-info {
+            background: linear-gradient(135deg, #E6F3FF, #CCE7FF);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 6px solid #4A90E2;
+        }
+
+        .move-history {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 15px 0;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 2px solid #e9ecef;
+        }
+
+        .move {
+            display: inline-block;
+            margin: 3px 8px;
+            padding: 5px 10px;
+            background: #f8f9fa;
+            border-radius: 20px;
+            cursor: pointer;
+            border: 1px solid #dee2e6;
+            transition: all 0.2s;
+        }
+
+        .move:hover {
+            background: #e9ecef;
+            transform: scale(1.05);
+        }
+
+        .title {
+            text-align: center;
+            color: #4A90E2;
+            font-size: 28px;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .status {
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+        }
+
+        .status.white {
+            background: #f8f9fa;
+            color: #495057;
+        }
+
+        .status.black {
+            background: #343a40;
+            color: white;
+        }
+
+        .hint-button {
+            background: linear-gradient(45deg, #FF6B35, #F7931E);
+        }
+
+        .reset-button {
+            background: linear-gradient(45deg, #DC3545, #C82333);
+        }
+
+        .evaluation {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 10px 0;
+            text-align: center;
+            font-weight: bold;
+            border: 2px solid #e9ecef;
+        }
+
+        #customJsonInput {
+            display: none;
+        }
+
+        .file-status {
+            font-size: 12px;
+            color: #666;
+            margin-left: 10px;
+        }
+
+        .eval-bar-container {
+            height: 12px;
+            background: #eee;
+            border-radius: 6px;
+            overflow: hidden;
+            margin: 8px 0;
+            position: relative;
+        }
+
+        .eval-bar-center {
+            position: absolute;
+            left: 50%;
+            top: 0;
+            width: 1px;
+            height: 100%;
+            background: #333;
+            z-index: 1;
+        }
+    </style>
+  <style>
+  .btn {
+    padding: 6px 12px;
+    margin-right: 10px;
+    border-radius: 6px;
+    color: white;
+    text-decoration: none;
+    font-weight: bold;
+  }
+  .red { background: #0b9010; }/*red { background: #e63946; }*/
+  .blue { background: #457b9d; }
+  .green { background: #2a9d8f; }
+  .orange { background: #f4a261; }
+
+
+
+#promotionDialog button {
+    font-size: 24px;
+    margin: 5px;
+    padding: 10px;
+}
+
+</style>
+
+
+</head>
+
+<body>
+<!-- INSERTED_BY_TK_SERVER:SOURCE -->
+<div style="padding:8px;margin:8px 0;border:1px dashed #888;font-family:monospace;">
+  Quelle: C:\Ionosactive\ionos_working_17_8_4_00.html<br>
+  Stand: 2025-08-17 18:04:43
+</div>
+
+  </div>
+<a href="http://tkchess.com/index5.html" class="btn red">knight_and_bishop</a>
+<a href="http://tkchess.com/index_smartphone.html" class="btn blue">smartphone</a>
+<a href="http://tkchess.com/index_desktop.html" class="btn green">desktop</a>
+<a href="http://tkchess.com/neu19.html" class="btn orange">experiment</a>
+ <h1 class="title">🏰 Chess Trainer for Young Knights! ⚔️</h1>
+  </div>
+
+  <!--
+<div id="promotionDialog" style="display: none; position: absolute; z-index: 9999; background: white; border: 2px solid 
+  <p>Choose a promotion piece:</p>
+  <button data-piece="q">♕</button>
+  <button data-piece="r">♖</button>
+  <button data-piece="b">♗</button>
+  <button data-piece="n">♘</button>
+</div>
+-->
+<!-- Promotion-Dialog (fixes HTML, position:fixed als Modal) -->
+<div id="promotionDialog" style="
+  display:none; position:fixed; inset:0; z-index:9999;
+  background: rgba(0,0,0,.35); align-items:center; justify-content:center;">
+  <div style="background:#fff; border:2px solid #333; border-radius:10px; padding:12px 14px;">
+    <p style="margin:0 0 8px 0; font-weight:bold;">Choose a promotion piece:</p>
+    <div id="promotionChoices"></div>
+  </div>
+</div>
+
+
+
+  
+    <div class="container">
+        <div class="board-container">
+            <div id="chessboard"></div>
+            <div class="controls">
+                <span id="turnIndicator" style="font-size: 1.5em; margin-right: 8px;">🌼</span>
+                <label for="puzzleSetSelector">🧩 Choose puzzle set:</label>
+                <select id="puzzleSetSelector">
+                    <option value="puzzles_kids_newly_enrich_all.json">Puzzles for Kids</option>
+                    <option value="puzzleskids1.json">general tactics</option>
+                    <option value="harvey_mate_in_2.json">Mate in Two</option>
+                    <option value="harvey_mate_in_3.json">Mate in Three</option>
+                    <option value="tactical_shots.json">Tactical Motifs</option>
+                </select>
+
+                <button id="loadCustomJsonBtn" class="load-custom-btn" onclick="loadCustomJson()">📁 Load Custom
+                    JSON</button>
+                <input type="file" id="customJsonInput" accept=".json,application/json" />
+                <span id="fileStatus" class="file-status"></span>
+
+                <input type="number" id="startPosition" placeholder="puzzle #" min="1" value="1" />
+
+                <button onclick="loadNextPuzzle()">New Puzzle 🧩</button>
+                <button onclick="getHint()" class="hint-button">Get Hint 💡</button>
+                <button onclick="showSolution()">Show Solution 🎯</button>
+                <button onclick="play_the_SAN_moves()">Play Moves 🎯</button>
+                <button onclick="clearArrows()">Clear Arrows 🧹</button>
+                <button onclick="resetPosition()" class="reset-button">Reset ↻</button>
+                <button onclick="undoMove()">Undo ↶</button>
+            </div>
+
+            <div style="margin-top: 10px;">
+                <button id="flipOrientationBtn" onclick="flipBoard()">Flip Orientation</button>
+                <button id="whiteOrientationBtn" onclick="setWhiteBottom()">White at Bottom</button>
+                <button id="blackOrientationBtn" onclick="setBlackBottom()">Black at Bottom</button>
+                <span id="engineStatus" style="margin-right:8px;font-weight:bold;">Engine: —</span>
+                <button id="engineToggleBtn" onclick="toggleEngine()">Engine: Stop</button>
+                <select id="engineSideSelector" onchange="setEngineSide(this.value)">
+                    <option value="none">Side: —</option>
+                    <option value="w">Engine: White</option>
+                    <option value="b">Engine: Black</option>
+                </select>
+
+
+                <button onclick="newloadJsonFromTextarea()"
+                    style="background: linear-gradient(45deg, #9C27B0, #673AB7);">📝 Load from Textarea</button>
+            </div>
+
+            <!-- JSON Textarea for direct editing -->
+            <div style="margin-top: 15px;">
+                <label for="jsonTextarea" style="font-weight: bold;">📝 Paste JSON data here:</label>
+                <textarea id="jsonTextarea"
+                    style="width: 100%; height: 200px; font-family: monospace; font-size: 12px; border: 2px solid #ddd; border-radius: 8px; padding: 8px;"
+                    placeholder="Paste your JSON puzzle data here..."></textarea>
+            </div>
+
+            <div class="status" id="status">White to move</div>
+        </div>
+
+        <div class="analysis-panel">
+            <div class="puzzle-info" id="puzzleInfo">
+                <h3>🎯 Current Puzzle</h3>
+                <p>Find the best move in this position!</p>
+            </div>
+
+            <div class="explanation" id="explanation">
+                <h3>🤔 Let's Think Together!</h3>
+                <p>Look at the position carefully. What do you notice about the pieces? Are there any tactics you can
+                    spot?</p>
+            </div>
+
+            <div class="evaluation" id="evaluation">
+                <div id="evalDisplay">—</div>
+                <div class="eval-bar-container">
+                    <div class="eval-bar-center"></div>
+                    <div id="evalBar" style="height:100%;width:50%;background:#ddd;transition:all 0.3s;"></div>
+                </div>
+                <div id="moveQuality" style="font-size: 14px; margin-top: 8px; font-style: italic;"></div>
+                <textarea id="engineOutput"
+                    style="width:100%;height:90px;display:none;margin-top:8px;font-family:monospace;font-size:11px;"></textarea>
+            </div>
+
+            <div class="move-history">
+                <h4>📖 Move History</h4>
+                <div id="moveHistory"></div>
+            </div>
+        </div>
+    </div>
+   
+
+    <script>
+
+let colorToPromote='w';
+let pendingPromotion = null;
+
+function showPromotionDialog(color /* 'w' | 'b' */) {
+  return new Promise((resolve) => {
+    const overlay  = document.getElementById('promotionDialog');
+    const choices  = document.getElementById('promotionChoices');
+    choices.innerHTML = '';
+
+    const isWhite = color === 'w';
+    const symbols = {
+      q: isWhite ? '♕' : '♛',
+      r: isWhite ? '♖' : '♜',
+      b: isWhite ? '♗' : '♝',
+      n: isWhite ? '♘' : '♞'
+    };
+
+    // Build buttons; stop propagation so overlay doesn't also see the click
+    Object.entries(symbols).forEach(([piece, glyph]) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.setAttribute('data-piece', piece);
+      btn.style.fontSize = '28px';
+      btn.style.margin = '4px';
+      btn.textContent = glyph;
+      btn.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        cleanup();
+        resolve(piece);
+      });
+      choices.appendChild(btn);
+    });
+
+    // Show overlay
+    overlay.style.display = 'flex';
+    setTimeout(() => choices.querySelector('button')?.focus(), 0);
+
+    // Delay arming the outside/ESC handlers to ignore the synthetic click from the tap
+    let armed = false;
+    const arm = () => { armed = true; };
+    //setTimeout(arm, 60); // ~one tick; adjust if needed
+	setTimeout(arm, 2140); // ~one tick; adjust if needed
+
+    const onOverlayClick = (e) => {
+      if (!armed) return;                 // ignore the first ghost click
+      if (e.target === overlay) {         // click outside the box
+        cleanup();
+        resolve('q');                      // default to queen
+      }
+    };
+    const onKeyDown = (e) => {
+      if (!armed) return;
+      if (e.key === 'Escape') {
+        cleanup();
+        resolve('q');
+      }
+    };
+
+    overlay.addEventListener('click', onOverlayClick);
+    document.addEventListener('keydown', onKeyDown);
+
+    function cleanup() {
+      overlay.style.display = 'none';
+      overlay.removeEventListener('click', onOverlayClick);
+      document.removeEventListener('keydown', onKeyDown);
+    }
+  });
+}
+
+      
+      
+//function below overwrites the promotion-dialog ghost-click      
+function showPromotionDialog_ghost(color /* 'w' | 'b' */) {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById('promotionDialog');
+    const box = overlay.querySelector('div');
+    const choices = document.getElementById('promotionChoices');
+    choices.innerHTML = '';
+
+    const isWhite = color === 'w';
+    const symbols = {
+      q: isWhite ? '♕' : '♛',
+      r: isWhite ? '♖' : '♜',
+      b: isWhite ? '♗' : '♝',
+      n: isWhite ? '♘' : '♞'
+    };
+
+    Object.entries(symbols).forEach(([piece, glyph]) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.setAttribute('data-piece', piece);
+      btn.style.fontSize = '28px';
+      btn.style.margin = '4px';
+      btn.textContent = glyph;
+      btn.addEventListener('click', () => { hide(); resolve(piece); });
+      choices.appendChild(btn);
+    });
+
+    function hide() {
+      overlay.style.display = 'none';
+      overlay.onclick = null;
+      document.onkeydown = null;
+    }
+
+    overlay.style.display = 'flex';
+    setTimeout(() => choices.querySelector('button')?.focus(), 0);
+
+    // ESC oder Klick neben die Box => default Dame
+    document.onkeydown = (e) => { if (e.key === 'Escape') { hide(); resolve('q'); } };
+    overlay.onclick = (e) => { if (e.target === overlay) { hide(); resolve('q'); } };
+  });
+}
+
+
+
+function showPromotionDialog_old() {
+    const dialog = document.getElementById('promotionDialog');
+    dialog.innerHTML = '<p>Choose a promotion piece:</p>'; // Clear existing content
+
+    const isWhite = colorToPromote === 'w';
+
+    const symbols = {
+        q: isWhite ? '♕' : '♛',
+        r: isWhite ? '♖' : '♜',
+        b: isWhite ? '♗' : '♝',
+        n: isWhite ? '♘' : '♞'
+    };
+
+    for (const piece in symbols) {
+        const btn = document.createElement('button');
+        btn.setAttribute('data-piece', piece);
+        btn.innerText = symbols[piece];
+        dialog.appendChild(btn);
+    }
+
+    // Attach event listeners to the buttons
+    const buttons = dialog.querySelectorAll('button[data-piece]');
+    buttons.forEach(button => {
+        button.addEventListener('click', () => {
+            const promotion = button.getAttribute('data-piece');
+            dialog.style.display = 'none';
+
+            if (pendingPromotion) {
+                const { from, to } = pendingPromotion;
+                makeMove(from, to, promotion);
+                pendingPromotion = null;
+            }
+        });
+    });
+
+    // Show the dialog
+    dialog.style.top = '50%';
+    dialog.style.left = '50%';
+    dialog.style.transform = 'translate(-50%, -50%)';
+    dialog.style.display = 'block';
+}
+
+
+
+
+
+
+function extractPuzzlesFromAny(jsonData) {
+  if (jsonData && Array.isArray(jsonData)) return jsonData;
+
+  if (jsonData && typeof jsonData === 'object') {
+    if (Array.isArray(jsonData.tactical_motifs)) return jsonData.tactical_motifs;
+    if (Array.isArray(jsonData.puzzles)) return jsonData.puzzles;
+
+    // find the first array-valued property
+    for (const k of Object.keys(jsonData)) {
+      if (Array.isArray(jsonData[k])) return jsonData[k];
+    }
+
+    // single puzzle object fallback
+    if (jsonData.fen) return [jsonData];
+  }
+  return null;
+}
+
+
+
+document.getElementById('chessboard').addEventListener('mousedown', ()=>console.log('down'), true);
+document.getElementById('chessboard').addEventListener('mousemove', ()=>console.log('move'), true);
+document.getElementById('chessboard').addEventListener('mouseup',   ()=>console.log('up'),   true);
+
+
+
+
+
+        let factor_for_sign='1';
+        // Globale Resource-Fehler loggen
+        // window.addEventListener('error', (e) => {
+        //    if (e.target && (e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK')) {
+        //        console.error('Resource load failed:', e.target.tagName, e.target.src || e.target.href);
+        //    }
+        // }, true);
+
+        function persistEngineSettings() {
+            try {
+                localStorage.setItem('trainer.allowEngineMove', JSON.stringify(allowEngineMove));
+                localStorage.setItem('trainer.engineColor', engineColor || 'none');
+            } catch (e) { }
+        }
+
+        function loadEngineSettings() {
+            try {
+                const a = localStorage.getItem('trainer.allowEngineMove');
+                const c = localStorage.getItem('trainer.engineColor');
+                if (a !== null) allowEngineMove = JSON.parse(a);
+                if (c) engineColor = (c === 'w' || c === 'b') ? c : null;
+            } catch (e) { }
+        }
+
+        function updateEngineUI() {
+            const btn = document.getElementById('engineToggleBtn');
+            const sel = document.getElementById('engineSideSelector');
+            const status = document.getElementById('engineStatus');
+
+            if (btn) btn.textContent = allowEngineMove ? 'Engine: Stop' : 'Engine: Go';
+            if (sel) sel.value = engineColor || 'none';
+            if (status) {
+                let side = engineColor === 'w' ? 'White' : engineColor === 'b' ? 'Black' : '—';
+                status.textContent = `Engine: ${side}${allowEngineMove && engineColor ? ' (on)' : ''}`;
+            }
+        }
+
+        function toggleEngine() {
+            allowEngineMove = !allowEngineMove;
+            if (!allowEngineMove && engine) engine.postMessage('stop'); // stop thinking if any
+            persistEngineSettings();
+            updateEngineUI();
+
+            // If we just turned it on and it's engine's turn, let it move now
+            if (allowEngineMove && engineColor && game.turn() === engineColor) {
+                engine.postMessage('position fen ' + game.fen());
+                engine.postMessage('go depth 15');
+            }
+        }
+
+        function setEngineSide(side) {
+            engineColor = (side === 'w' || side === 'b') ? side : null;
+            persistEngineSettings();
+            updateEngineUI();
+
+            if (allowEngineMove && engineColor && game.turn() === engineColor) {
+                engine.postMessage('position fen ' + game.fen());
+                engine.postMessage('go depth 15');
+            }
+        }
+
+        // Optional keyboard shortcuts: e = toggle, w/b = choose side
+        document.addEventListener('keydown', (ev) => {
+            if (ev.key === 'e') toggleEngine();
+            if (ev.key === 'w') setEngineSide('w');
+            if (ev.key === 'b') setEngineSide('b');
+            if (ev.key === 'Escape') setEngineSide('none');
+        });
+
+        // globals you can control
+        //let allowEngineMove = false;   // default: puzzles = human only
+        let allowEngineMove = true;   // default: puzzles = human only
+
+        //let engineColor = null;        // 'w' or 'b' if you want engine to play that side
+        let engineColor = 'b';        // 'w' or 'b' if you want engine to play that side
+
+        //        let allowEngineMove = false;        // keep false for puzzle mode
+        //let engineColor = null;             // 'w' or 'b' when you do want engine to play
+
+        // Global variables
+        if (!('game' in window)) {
+            window.game = new Chess();
+        }
+
+        let board = null;
+        let currentPuzzleIndex = 0;
+        let arrows = [];
+        let highlightedSquares = [];
+        let engine = null;
+        let enginePause = false;
+
+        // Evaluation tracking
+        let currentEvaluation = null; // Score from White's perspective in pawns
+        let previousEvaluation = null;
+        let isAwaitingEvaluation = false;
+
+        // Sample puzzles for testing
+        let puzzles = [
+            {
+                "fen": "r1b3kr/ppp1Bp1p/1b6/n2P4/2p3q1/2Q2N2/P4PPP/RN2R1K1 w - - 0 1",
+                "solution": "1. Qxh8+ Kxh8 2. Bf6+ Kg8 3. Re8#",
+                "theme": "mate in 3",
+                "description": "William Evans vs Alexander MacDonnell, London, 1829",
+                "hint": "Look for a forcing sacrifice!",
+                "highlight_squares": [],
+                "arrows": [
+                    { "from": "c3", "to": "h8", "color": "green" },
+                    { "from": "g8", "to": "h8", "color": "blue" },
+                    { "from": "e7", "to": "f6", "color": "green" },
+                    { "from": "h8", "to": "g8", "color": "blue" },
+                    { "from": "e1", "to": "e8", "color": "green" }
+                ]
+            },
+            {
+                "fen": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
+                "solution": "1...d5",
+                "theme": "opening",
+                "description": "Basic opening response",
+                "hint": "Control the center!",
+                "highlight_squares": [
+                    { "square": "d5", "color": "yellow" }
+                ],
+                "arrows": [
+                    { "from": "d7", "to": "d5", "color": "green" }
+                ]
+            },
+            {
+                "fen": "r2qkb1r/pp2nppp/3p1n2/2pP4/2P1P3/2N2N2/PP1B1PPP/R2QKB1R w KQkq c6 0 6",
+                "solution": "1. dxc6",
+                "theme": "pawn capture",
+                "description": "En passant capture",
+                "hint": "Special pawn rule applies here!",
+                "highlight_squares": [
+                    { "square": "c6", "color": "green" }
+                ],
+                "arrows": [
+                    { "from": "d5", "to": "c6", "color": "green" }
+                ]
+            }
+        ];
+
+ 
+
+
+        // Initialize Stockfish engine
+        function initEngine() {
+            if (typeof Worker !== 'undefined') {
+                try {
+                    engine = new Worker('js/stockfish.js');
+                    engine.onmessage = handleEngineMessage;
+                    console.log('Stockfish engine initialized successfully');
+                } catch (error) {
+                    console.warn('Could not initialize Stockfish engine:', error);
+                }
+            } else {
+                console.warn('Web Workers not supported - engine disabled');
+            }
+        }
+
+
+        function handleEngineMessage(event) {
+            const message = event.data;
+
+
+            // keep your eval parsing...
+            if (message.startsWith("info") && message.includes("score")) {
+
+
+                parseEvaluationFromMessage(message);
+            
+            
+            }
+
+            if (!message.startsWith("bestmove")) return;//if not bestmove
+
+            const bestmove = message.split(/\s+/)[1];
+            if (!bestmove || bestmove === "(none)") return;
+
+            //???
+            if (allowEngineMove && engineColor && game.turn() === engineColor) {
+                // apply bestmove (from/to/promotion) and update the board
+            }
+
+
+
+            // Only apply if explicitly enabled and it's engine's turn
+            if (!allowEngineMove || engineColor === null || game.turn() !== engineColor) {
+                console.log("Ignoring bestmove", { bestmove, turn: game.turn(), engineColor, allowEngineMove });
+                return;
+            }
+
+            const from = bestmove.slice(0, 2);
+            const to = bestmove.slice(2, 4);
+            const promotion = bestmove[4];
+
+            const mv = game.move({ from, to, ...(promotion ? { promotion } : {}) });
+            if (!mv) { console.warn("Illegal bestmove for current FEN", bestmove, game.fen()); return; }
+
+            board.position(game.fen());
+            updateStatus();
+            updateMoveHistory();
+            console.log('now calling requestevaluation - plus make a move-from handleenginemessage aus')
+                        console.log('akzuell game_fen=', game.fen())
+                        
+            setTimeout(() => requestEvaluation(), 50);
+        }
+
+
+
+        // Parse evaluation from Stockfish message
+        function parseEvaluationFromMessage(message) {
+            let evaluation = null;
+            console.log('in parse evalu from message- gesendet von =',gesendet_von);
+
+            // Check for mate score
+            const mateMatch = message.match(/score mate (-?\d+)/);
+            if (mateMatch) {
+                const mateIn = parseInt(mateMatch[1]);
+                
+                // Convert mate score to a large number (preserving sign)
+                evaluation = mateIn > 0 ? 50 : -50; // Mate is very good/bad
+                if (evaluation >0){               
+                evaluation=evaluation +(6-mateIn)*5;//kürzeres matt besser
+                }
+                else
+                {evaluation=evaluation -(6-mateIn)*5;}//}
+
+
+                if (gesendet_von==='loadnextpuzzle'){currentEvaluation=evaluation}
+                if (gesendet_von==='User'){Userevaluation=evaluation}
+
+                console.log('currentEvaluation set in parseevalfrommessage_mate_in_branch=' ,currentEvaluation)
+                 
+                //***************************++++++++++++++++++++++++++++
+                if (board.orientation==='black'){evaluation=evaluation*-1};
+                
+                updateEvaluationDisplay(evaluation, `#${Math.abs(mateIn)}`);
+                return;
+            }
+
+
+            // Check for centipawn score
+            const cpMatch = message.match(/score cp (-?\d+)/);
+            if (cpMatch) {
+                console.log('cpMatch=',cpMatch);
+                const centipawns = (cpMatch[1]);
+                //const centipawns = factor_for_sign*(cpMatch[1]);
+                
+                evaluation = centipawns / 100; 
+               //console.log('evaluation =cpMatch*factor_for_sign=',evaluation);// Convert to pawns
+
+               if (gesendet_von==='loadnextpuzzle'){currentEvaluation=evaluation}
+                if (gesendet_von==='User'){Userevaluation=evaluation}
+                console.log('Userevaluation in parse Evaluationfrommessage vor dispays=',Userevaluation);
+                console.log('currentEvaluation set in parseevalfrommessage_evalscore=' ,currentEvaluation)
+                
+                updateEvaluationDisplay(evaluation, (evaluation > 0 ? "+" : "") + evaluation.toFixed(1));
+            }
+        }
+
+        // Update evaluation display and bar
+        function updateEvaluationDisplay(evaluation, displayText) {
+            currentEvaluation = evaluation;
+                     
+
+            // Update display text
+            document.getElementById('evalDisplay').textContent = displayText;
+
+            // Update evaluation bar
+            updateEvaluationBar(evaluation);
+
+
+
+
+            // If we were waiting for evaluation after a move, analyze move quality
+            if (isAwaitingEvaluation && previousEvaluation !== null) {
+
+
+
+                analyzeMoveQuality(previousEvaluation, currentEvaluation);
+                
+                
+                
+                
+                isAwaitingEvaluation = false;
+            }
+        }
+
+        // Update the visual evaluation bar
+        function updateEvaluationBar(score) {
+            const bar = document.getElementById("evalBar");
+            if (!bar) return;
+            if (getCurrentOrientation()=== 'b'){
+
+                score=score*-1
+            }
+            // Normalize score to 0-100 scale for display
+            // 0 = completely lost, 50 = equal, 100 = completely winning
+            let normalizedScore = 50; // Default to equal
+
+            if (Math.abs(score) >= 50) {
+                // Mate or overwhelming advantage
+                normalizedScore = score > 0 ? 95 : 5;
+            } else {
+                // Use atan function to scale scores nicely
+                // This gives: score 0 -> 50%, score ±5 -> ~80%/20%, score ±10 -> ~90%/10%
+                const scaleFactor = (2 / Math.PI) * Math.atan(Math.abs(score) / 3);
+                normalizedScore = score > 0 ?
+                    50 + (scaleFactor * 45) :
+                    50 - (scaleFactor * 45);
+            }
+
+            bar.style.width = normalizedScore + "%";
+            bar.className = "";
+
+            if (score > 0.5) {
+                bar.classList.add("positive");
+            } else if (score < -0.5) {
+                bar.classList.add("negative");
+            }
+        }
+
+        // Analyze move quality based on evaluation change
+        function analyzeMoveQuality(prevEval, currentEval) {
+            if (prevEval === null || currentEval === null) return;
+
+            // Calculate the evaluation change from the player's perspective
+            // If it's White's move, positive change is good
+            // If it's Black's move, negative change is good (since scores are from White's POV)
+            let sideToMove = game.turn() === 'w' ? 1 : -1;
+            let evaluationChange = (currentEval - prevEval) * sideToMove;
+            
+            console.log('preveval=',prevEval);
+
+            console.log('currenteval=',currentEval);
+            
+            
+            
+            console.log('evaluationchange_before=',evaluationChange);
+            
+            console.log('boardorientation==',board.orientation());
+            //*******************************************  neu
+            if (board.orientation()==='black'){evaluationChange=evaluationChange*-1};
+            console.log('evaluationchange_after multplying=',evaluationChange);
+
+            let moveQuality;
+            let comments;
+
+            if (evaluationChange >= 3) {
+                moveQuality = "Brilliant!";
+                comments = evaluationComments.brilliant;
+            } else if (evaluationChange >= 1.5) {
+                moveQuality = "Excellent";
+                comments = evaluationComments.excellent;
+            } else if (evaluationChange >= 0.5) {
+                moveQuality = "Good";
+                comments = evaluationComments.good;
+            } else if (evaluationChange >= -0.5) {
+                moveQuality = "Okay";
+                comments = evaluationComments.okay;
+            } else if (evaluationChange >= -1.5) {
+                moveQuality = "Questionable";
+                comments = evaluationComments.questionable;
+            } else if (evaluationChange >= -3) {
+                moveQuality = "Poor";
+                comments = evaluationComments.poor;
+            } else {
+                moveQuality = "Blunder";
+                comments = evaluationComments.blunder;
+            }
+
+            // Display move quality and random comment
+            const randomComment = comments[Math.floor(Math.random() * comments.length)];
+            document.getElementById('moveQuality').innerHTML =
+                `<strong>${moveQuality}</strong> (${evaluationChange.toFixed(1)})`;
+
+            // Update explanation with the comment
+            document.getElementById('explanation').innerHTML = `
+                <h3>📊 Move Analysis</h3>
+                <p>${randomComment}</p>
+                <p><em>Evaluation change: ${evaluationChange.toFixed(1)} pawns</em></p>
+            `;
+        }
+
+        // Request evaluation from engine
+        function requestEvaluation() {
+            if (engine && !enginePause) {
+                console.log('FEN to engine from requestevaluation:', game.fen());
+                            console.log('now calling requestevaluation from handleenginemessage aus')
+                        console.log('akzuell game_fen=', game.fen())
+                engine.postMessage("position fen " + game.fen());
+                engine.postMessage("go depth 15");
+            }
+        }
+
+        // Board orientation functions
+        function getCurrentOrientation() {
+            return typeof board.orientation === 'function'
+                ? board.orientation()
+                : board.orientation;
+        }
+
+        function setBoardOrientation(color) {
+            const currentOrientation = getCurrentOrientation();
+            console.log(`Setting orientation to: ${color}, current: ${currentOrientation}`);
+
+            if (currentOrientation !== color) {
+                board.flip();
+                console.log(`Board flipped. New orientation: ${getCurrentOrientation()}`);
+            }
+        }
+
+        function flipBoard() {
+            board.flip();
+            clearArrows();
+            console.log(`Board flipped to: ${getCurrentOrientation()}`);
+        }
+
+        function setWhiteBottom() {
+            setBoardOrientation('white');
+            clearArrows();
+        }
+
+        function setBlackBottom() {
+            setBoardOrientation('black');
+            clearArrows();
+        }
+
+        // Initialize chess board
+        let _libTries = 0;
+
+        function libsReady() {
+            return (typeof Chessboard !== 'undefined') && (typeof $ !== 'undefined');
+        }
+
+
+//*******begin neuer bereinigter block ?
+
+<!-- ************* BEGIN CLEAN BLOCK ************* -->
+
+//<script>
+// ===== initBoard bleibt wie gehabt =====
+function initBoard() {
+  if (!libsReady()) {
+    if (_libTries % 10 === 0) console.warn('Waiting for libraries… try', _libTries);
+    _libTries++;
+    if (_libTries > 200) {
+      console.error('Giving up: Chessboard library not loaded. Check js/chessboard-1.0.0.js path & MIME.');
+      const statusEl = document.getElementById('status');
+      if (statusEl) statusEl.textContent = 'Error: chessboard library not loaded.';
+      return;
+    }
+    setTimeout(initBoard, 100);
+    return;
+  }
+
+  try {
+    const config = {
+      draggable: true,
+      position: 'start',
+      onDragStart: onDragStart,
+      onDrop: onDrop,
+      onSnapEnd: onSnapEnd,
+      onMouseoverSquare: onMouseoverSquare,
+      onMouseoutSquare: onMouseoutSquare,
+      pieceTheme: 'img/chesspieces/wikipedia/{piece}.png',
+      boardTheme: 'brown',
+      showNotation: true,
+      sparePieces: false
+    };
+
+    board = Chessboard('chessboard', config);
+
+    console.log('Board initialized ✔');
+    setTimeout(() => board && board.resize && board.resize(), 100);
+  } catch (err) {
+    console.error('Error initializing board:', err);
+  }
+}
+
+// --- optional: Event-Probe ---
+(function probe() {
+  const b = document.getElementById('chessboard');
+  if (!b) return;
+  const log = (tag) => (e) => console.log(tag, e.type, e.pointerType || '', e.target.className);
+  ['pointerdown','pointerup','mousedown','mouseup','click','touchstart','touchend']
+    .forEach(t => b.addEventListener(t, log('EV'), true));
+})();
+
+
+// ===== EINZIGE neue Tap-to-Move Implementierung (Pointer Events) =====
+(function tapToMovePointer() {
+  const boardEl = document.getElementById('chessboard');
+  if (!boardEl || typeof game === 'undefined') return;
+
+  // --- Zustand
+  let selectedSquare = null;
+  let downX = 0, downY = 0, downId = null, tapCandidate = false;
+  const TAP_PX = 6; // 6px Schwelle: kurz tippen = Tap, größer = Drag
+
+  // --- Hilfsfunktionen
+  function clearSelAndHighlights() {
+    $('#chessboard .selected-square').removeClass('selected-square');
+    if (typeof removeHighlights === 'function') removeHighlights();
+  }
+  function showTargets(from) {
+    clearSelAndHighlights();
+    $('#chessboard .square-' + from).addClass('selected-square');
+    const moves = game.moves({ square: from, verbose: true });
+    for (const mv of moves) if (typeof highlightSquare === 'function') highlightSquare(mv.to);
+  }
+  function squareFromElement(el) {
+    const m = el && el.className && el.className.match(/square-([a-h][1-8])/);
+    return m ? m[1] : null;
+  }
+  function squareFromEvent(e) {
+    const node = e.target && e.target.closest ? e.target.closest('#chessboard .square-55d63') : null;
+    const sqEl = node || document.elementFromPoint(e.clientX, e.clientY);
+    return squareFromElement(sqEl);
+  }
+  function dist(ax,ay,bx,by){ const dx=ax-bx, dy=ay-by; return Math.hypot(dx,dy); }
+async function tryCommitMove(from, to) {
+  if (!from || !to || from === to) return false;
+
+  // Look up the legal move metadata from chess.js
+  const legal = game.moves({ square: from, verbose: true });
+  const target = legal.find(m => m.to === to);
+
+  let mv;
+  if (target && target.promotion) {
+    // Promotion is required – ask the user and pass the choice
+    const color = (game.get(from)?.color) || 'w';
+    const promo = await showPromotionDialog(color);   // returns 'q'|'r'|'b'|'n'
+    mv = game.move({ from, to, promotion: promo });
+  } else {
+    // Normal move
+    mv = game.move({ from, to });
+  }
+
+  if (!mv) return false;
+
+  board.position(game.fen());
+  handleUserMoveCommon(mv);
+  return true;
+}
+
+  async function tryCommitMove_1(from, to) {
+    if (!from || !to || from === to) return false;
+
+    const p  = game.get(from);
+    const tr = to[1];
+    const willPromote = p && p.type === 'p' && (
+      (p.color === 'w' && tr === '8') || (p.color === 'b' && tr === '1')
+    );
+
+    let mv;
+    if (willPromote && typeof showPromotionDialog === 'function') {
+      const promo = await showPromotionDialog(p.color);   // 'q' | 'r' | 'b' | 'n'
+      mv = game.move({ from, to, promotion: promo });
+    } else {
+      mv = game.move({ from, to });                       // kein hartes 'promotion: q'
+    }
+
+    if (!mv) return false;
+
+    board.position(game.fen());
+    handleUserMoveCommon(mv);
+    return true;
+  }
+
+  // --- Tap-Detektion
+  boardEl.addEventListener('pointerdown', (e) => {
+    const sq = squareFromEvent(e);
+    if (!sq) return;
+
+    downX = e.clientX; downY = e.clientY; downId = e.pointerId; tapCandidate = true;
+
+    // Erste Berührung: eigene Figur selektieren (falls dran)
+    const piece = game.get(sq);
+    if (piece && piece.color === game.turn()) {
+      selectedSquare = sq;
+      showTargets(selectedSquare);
+    }
+  }, true);
+
+  boardEl.addEventListener('pointermove', (e) => {
+    if (!tapCandidate || e.pointerId !== downId) return;
+    if (dist(downX, downY, e.clientX, e.clientY) > TAP_PX) {
+      tapCandidate = false; // wird Drag -> Chessboard.js kümmert sich
+    }
+  }, true);
+
+  boardEl.addEventListener('pointerup', async (e) => {
+    if (e.pointerId !== downId) return;
+    const wasTap = tapCandidate && dist(downX, downY, e.clientX, e.clientY) <= TAP_PX;
+    tapCandidate = false; downId = null;
+
+    if (!wasTap || game.game_over()) return;
+
+    const sq = squareFromEvent(e);
+    if (!sq) return;
+
+    if (!selectedSquare) {
+      // Späte Selektion: Figur wurde erst beim Loslassen „getappt“
+      const piece = game.get(sq);
+      if (piece && piece.color === game.turn()) {
+        selectedSquare = sq;
+        showTargets(selectedSquare);
+      }
+      return;
+    }
+
+    // Zweiter Tap versucht den Zug
+    const moved = await tryCommitMove(selectedSquare, sq);
+    if (moved) {
+      selectedSquare = null;
+      clearSelAndHighlights();
+    } else {
+      // Illegal: auf eigene andere Figur tippen -> Auswahl wechseln
+      const piece = game.get(sq);
+      if (piece && piece.color === game.turn()) {
+        selectedSquare = sq;
+        showTargets(selectedSquare);
+      }
+    }
+  }, true);
+
+  // ESC bricht Auswahl ab (Desktop)
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { selectedSquare = null; clearSelAndHighlights(); }
+  });
+
+  // Optional: dezente Auswahl-Optik, falls noch nicht vorhanden
+  (function ensureStyle(){
+    if (document.getElementById('tap-style')) return;
+    const css = '#chessboard .selected-square{box-shadow:inset 0 0 0 3px rgba(255,215,0,.9);}';
+    const s = document.createElement('style'); s.id='tap-style'; s.textContent = css; document.head.appendChild(s);
+  })();
+})();
+
+
+// ===== Deine bestehenden Handler (unverändert außer evtl. Mini-Kommentar) =====
+
+// Drag-Start: regelt Zugberechtigung
+function onDragStart(source, piece, position, orientation) {
+  if (game.game_over()) return false;
+  if ((game.turn() === 'w' && piece.search(/^b/) !== -1) ||
+      (game.turn() === 'b' && piece.search(/^w/) !== -1)) {
+    return false;
+  }
+}
+
+// Gemeinsamer Post-Move-Pfad
+function handleUserMoveCommon(move) {
+  previousEvaluation = currentEvaluation;
+  previousUserevaluation = Userevaluation;
+
+  isAwaitingEvaluation = true;
+  updateStatus();
+  updateMoveHistory();
+
+  gesendet_von = 'User';
+  setTimeout(() => requestEvaluation(), 100);
+
+  if (allowEngineMove && engineColor && game.turn() === engineColor) {
+    setTimeout(() => {
+      engine.postMessage("position fen " + game.fen());
+      engine.postMessage("go depth 15");
+    }, 150);
+  }
+}
+
+// Hilfsfunktion (optional weiter nutzbar)
+function isPromotionMove(source, target) {
+  const p = game.get(source);
+  if (!p || p.type !== 'p') return false;
+  const tr = target[1];
+  return (p.color === 'w' && tr === '8') || (p.color === 'b' && tr === '1');
+}
+
+// Falls du Promotion außerhalb von onDrop auslösen willst
+function makeMove(from, to, promotion) {
+  const mv = game.move({ from, to, promotion });  // 'q' | 'r' | 'b' | 'n'
+  if (!mv) return;
+  board.position(game.fen());
+  isAwaitingEvaluation = true;
+  updateStatus();
+  updateMoveHistory();
+  gesendet_von = 'User';
+  setTimeout(() => requestEvaluation(), 100);
+  if (allowEngineMove && engineColor && game.turn() === engineColor) {
+    setTimeout(() => {
+      engine.postMessage('position fen ' + game.fen());
+      engine.postMessage('go depth 15');
+    }, 150);
+  }
+}
+
+// Also fix the onDrop function to use the promotion dialog
+function onDrop(source, target) {
+  const piece = game.get(source);
+  const targetRank = target[1];
+  const isPromotion = piece && piece.type === 'p' && 
+    ((piece.color === 'w' && targetRank === '8') || 
+     (piece.color === 'b' && targetRank === '1'));
+
+  if (isPromotion) {
+    // Handle promotion with dialog
+    showPromotionDialog(piece.color).then(promotionPiece => {
+      const move = game.move({ from: source, to: target, promotion: promotionPiece });
+      if (!move) return;
+      board.position(game.fen());
+      if (typeof handleUserMoveCommon === 'function') {
+        handleUserMoveCommon(move);
+      }
+    });
+    return 'snapback'; // Cancel the drag, we'll move after dialog
+  }
+
+  // Normal move
+  const move = game.move({ from: source, to: target });
+  if (!move) return 'snapback';
+
+  if (typeof handleUserMoveCommon === 'function') {
+    handleUserMoveCommon(move);
+  }
+}
+
+
+
+// Drag-&-Drop inkl. Promotion-Dialog
+function onDrop_bisher1(source, target) {
+  const p  = game.get(source);
+  const tr = target[1];
+  const willPromote = p && p.type === 'p' && ((p.color === 'w' && tr === '8') || (p.color === 'b' && tr === '1'));
+
+  if (willPromote) {
+    showPromotionDialog(p.color).then(promo => {
+      const mv = game.move({ from: source, to: target, promotion: promo });
+      if (!mv) return;
+      board.position(game.fen()); // keine Snap-Animation bei Promotion
+      handleUserMoveCommon(mv);
+    });
+    return 'snapback'; // wir bewegen erst nach Auswahl
+  }
+
+  // normaler Drag-Zug
+  const mv = game.move({ from: source, to: target });
+  if (!mv) return 'snapback';
+  // Snap-Animation darf laufen; finaler Sync in onSnapEnd
+  handleUserMoveCommon(mv);
+}
+
+// Board nach Snap synchronisieren
+function onSnapEnd() {
+  board.position(game.fen());
+}
+
+// Hover-Hilfen
+function onMouseoverSquare(square, piece) {
+  const moves = game.moves({ square: square, verbose: true });
+  if (moves.length === 0) return;
+  highlightSquare(square);
+  for (let i = 0; i < moves.length; i++) highlightSquare(moves[i].to);
+}
+function onMouseoutSquare(square, piece) { removeHighlights(); }
+
+// Highlighter (wie gehabt)
+function removeHighlights() {
+  $('#chessboard .square-55d63').removeClass('highlight1-32417');
+}
+function highlightSquare(square) {
+  const $square = $('#chessboard .square-' + square);
+  $square.addClass('highlight1-32417');
+}
+
+// (Beispiel) Pfeil/Koordinaten bleiben unverändert …
+function getSquareCoordinates(square) {
+  const files = ['a','b','c','d','e','f','g','h'];
+  const ranks = ['8','7','6','5','4','3','2','1'];
+  const file = square.charAt(0);
+  const rank = square.charAt(1);
+  let fileIndex = files.indexOf(file);
+  let rankIndex = ranks.indexOf(rank);
+  if (fileIndex === -1 || rankIndex === -1) return null;
+  const currentOrientation = getCurrentOrientation();
+  if (currentOrientation === 'black') {
+    fileIndex = 7 - fileIndex;
+    rankIndex = 7 - rankIndex;
+  }
+  const x = fileIndex * 50 + 25;
+  const y = rankIndex * 50 + 25;
+  return { x, y };
+}
+
+
+        function onMouseoverSquare(square, piece) {
+            const moves = game.moves({
+                square: square,
+                verbose: true
+            });
+
+            if (moves.length === 0) return;
+
+            highlightSquare(square);
+
+            for (let i = 0; i < moves.length; i++) {
+                highlightSquare(moves[i].to);
+            }
+        }
+
+        function onMouseoutSquare(square, piece) {
+            removeHighlights();
+        }
+
+        function removeHighlights() {
+            $('#chessboard .square-55d63').removeClass('highlight1-32417');
+        }
+
+        function highlightSquare(square) {
+            const $square = $('#chessboard .square-' + square);
+            $square.addClass('highlight1-32417');
+        }
+
+        // Arrow and highlighting functions
+        function getSquareCoordinates(square) {
+            const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+            const ranks = ['8', '7', '6', '5', '4', '3', '2', '1'];
+
+            const file = square.charAt(0);
+            const rank = square.charAt(1);
+
+            let fileIndex = files.indexOf(file);
+            let rankIndex = ranks.indexOf(rank);
+
+            if (fileIndex === -1 || rankIndex === -1) return null;
+
+            const currentOrientation = getCurrentOrientation();
+
+            if (currentOrientation === 'black') {
+                fileIndex = 7 - fileIndex;
+                rankIndex = 7 - rankIndex;
+            }
+
+            const x = fileIndex * 50 + 25;
+            const y = rankIndex * 50 + 25;
+
+            return { x, y };
+        }
+
+        function addArrowOverlay() {
+            const boardElement = document.getElementById('chessboard');
+            if (!boardElement) return;
+
+            const existingOverlay = boardElement.querySelector('.arrow-overlay');
+            if (existingOverlay) {
+                existingOverlay.remove();
+            }
+
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.setAttribute('class', 'arrow-overlay');
+            svg.setAttribute('width', '402');
+            svg.setAttribute('height', '402');
+            svg.setAttribute('viewBox', '0 0 402 402');
+            svg.style.position = 'absolute';
+            svg.style.top = '0';
+            svg.style.left = '0';
+            svg.style.pointerEvents = 'none';
+            svg.style.zIndex = '10';
+
+            const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+
+            const colors = {
+                'green': '#22c55e',
+                'red': '#ef4444',
+                'blue': '#3b82f6',
+                'yellow': '#eab308'
+            };
+
+            Object.entries(colors).forEach(([colorName, colorValue]) => {
+                const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+                marker.setAttribute('id', `arrowhead-${colorName}`);
+                marker.setAttribute('markerWidth', '10');
+                marker.setAttribute('markerHeight', '10');
+                marker.setAttribute('refX', '8');
+                marker.setAttribute('refY', '3');
+                marker.setAttribute('orient', 'auto');
+                marker.setAttribute('markerUnits', 'strokeWidth');
+
+                const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+                polygon.setAttribute('points', '0,0 0,6 9,3');
+                polygon.setAttribute('fill', colorValue);
+
+                marker.appendChild(polygon);
+                defs.appendChild(marker);
+            });
+
+            svg.appendChild(defs);
+            boardElement.appendChild(svg);
+        }
+
+        function drawArrow(from, to, color = 'green') {
+            const svg = document.querySelector('#chessboard .arrow-overlay');
+            if (!svg) {
+                addArrowOverlay();
+                return setTimeout(() => drawArrow(from, to, color), 100);
+            }
+
+            const fromCoords = getSquareCoordinates(from);
+            const toCoords = getSquareCoordinates(to);
+
+            if (!fromCoords || !toCoords) return;
+
+            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            line.setAttribute('x1', fromCoords.x);
+            line.setAttribute('y1', fromCoords.y);
+            line.setAttribute('x2', toCoords.x);
+            line.setAttribute('y2', toCoords.y);
+            line.setAttribute('stroke', getArrowColor(color));
+            line.setAttribute('stroke-width', '6');
+            line.setAttribute('stroke-linecap', 'round');
+            line.setAttribute('marker-end', `url(#arrowhead-${color})`);
+            line.setAttribute('opacity', '0.8');
+
+            svg.appendChild(line);
+            arrows.push({ from, to, color, element: line });
+        }
+
+        function getArrowColor(color) {
+            const colors = {
+                'green': '#22c55e',
+                'red': '#ef4444',
+                'blue': '#3b82f6',
+                'yellow': '#eab308'
+            };
+            return colors[color] || colors.green;
+        }
+
+        function highlightSquareCustom(square, color = 'yellow') {
+            const squareElement = document.querySelector(`#chessboard .square-${square}`);
+            if (!squareElement) return;
+
+            squareElement.classList.add(`square-highlight-${color}`);
+            highlightedSquares.push({ square, color, element: squareElement });
+        }
+
+        function clearArrows() {
+            const svg = document.querySelector('#chessboard .arrow-overlay');
+            if (svg) {
+                const arrowElements = svg.querySelectorAll('line');
+                arrowElements.forEach(arrow => arrow.remove());
+            }
+            arrows.length = 0;
+
+            highlightedSquares.forEach(({ element, color }) => {
+                element.classList.remove(`square-highlight-${color}`);
+            });
+            highlightedSquares.length = 0;
+        }
+
+
+//gloabal variable
+let gesendet_von=' ';
+let Userevaluation=0;
+let previousUserevaluation=0;
+
+//gebraucht  ***********************************************
+        // Puzzle management functions
+        function loadNextPuzzle() {
+            if (!board) {
+                console.warn('Board not ready yet – skipping loadNextPuzzle()');
+                return;
+            }
+            const startPosInput = document.getElementById('startPosition');
+            const startPos = parseInt(startPosInput.value || '1', 10);
+            let nextIndex = Math.max(0, Math.min(puzzles.length - 1, startPos - 1));
+            currentPuzzleIndex = nextIndex;
+            engineColor='b';//standard
+            const puzzle = puzzles[currentPuzzleIndex];
+            if (!puzzle) return;
+
+            // Reset evaluation tracking
+            currentEvaluation = null;
+            previousEvaluation = null;
+            isAwaitingEvaluation = false;
+
+            // Get side to move from FEN
+            const sideToMove = puzzle.fen.split(' ')[1];
+            //factor_for_sign=1;
+            //side to move zeigt an, wie das Brett gedreht sein wird
+            if (sideToMove==='b'){ engineColor='w'}
+            // inside loadNextPuzzle(), after you read sideToMove from the FEN:
+            //engineColor = null;           // default: engine does NOT move in puzzle mode
+            // If you want engine to play automatically for the side to move, set:
+            // engineColor = sideToMove; allowEngineMove = true;
+
+            console.log(`Loading puzzle ${currentPuzzleIndex}, side to move: ${sideToMove}`);
+
+            // Load position
+            game.load(puzzle.fen);
+            board.position(puzzle.fen);
+
+            // Set orientation
+            const desiredOrientation = sideToMove === 'w' ? 'white' : 'black';
+            setTimeout(() => {
+                setBoardOrientation(desiredOrientation);
+            }, 50);
+
+            clearArrows();
+            updateStatus();
+            updateMoveHistory();
+
+            // Update puzzle info
+            const infoEl = document.getElementById('puzzleInfo');
+            if (infoEl) {
+                infoEl.innerHTML = `
+                    <h3>🎯 Puzzle ${currentPuzzleIndex + 1}: ${puzzle.theme}</h3>
+                    <p>${puzzle.description}</p>
+                    <p><strong>Your goal:</strong> Find the best move for ${sideToMove === 'w' ? 'White' : 'Black'}!</p>
+                `;
+            }
+
+            // Reset explanation
+            document.getElementById('explanation').innerHTML = `
+                <h3>🤔 Let's Think Together!</h3>
+                <p>Look at the position carefully. What do you notice about the pieces? Are there any tactics you can spot?</p>
+            `;
+
+            // Clear move quality display
+            document.getElementById('moveQuality').textContent = '';
+
+            // Update input for next click
+            if (startPosInput && puzzles.length) {
+                startPosInput.value = Math.min(puzzles.length, nextIndex + 2);
+            }
+ console.log('now calling requestevaluation initial valuation from loadnextpuzzle aus')
+                        console.log('aktuell game_fen=', game.fen())
+            gesendet_von='loadNextPuzzle';
+            console.log('gesendet_von=', gesendet_von)
+            // Request initial evaluation
+            setTimeout(() => requestEvaluation(), 200);
+            // Kick the engine if it's its turn after loading
+            if (allowEngineMove && engineColor && game.turn() === engineColor) {
+                setTimeout(() => {
+                    console.log('now postmessage grom loadnextpuzzle-unten aus')
+                        console.log('aktuell game_fen=', game.fen())
+                        console.log('now calling requestevaluation initial valuation from loadnextpuzzle aus')
+                        console.log('und auch go depth 15=')
+
+                    engine.postMessage('position fen ' + game.fen());
+                    engine.postMessage('go depth 15');
+                }, 200);
+            }
+//ende loadnextpuzzle (gebraucht)
+
+
+
+        }
+
+        function getHint() {
+            const puzzle = puzzles[currentPuzzleIndex];
+            if (!puzzle) return;
+
+            clearArrows();
+
+            // Highlight squares
+            if (puzzle.highlight_squares) {
+                for (const item of puzzle.highlight_squares) {
+                    highlightSquareCustom(item.square, item.color);
+                }
+            }
+
+            // Draw arrows
+            if (puzzle.arrows) {
+                for (const item of puzzle.arrows) {
+                    drawArrow(item.from, item.to, item.color);
+                }
+            }
+
+            // Update explanation
+            const explanationElement = document.getElementById('explanation');
+            if (explanationElement) {
+                explanationElement.innerHTML = `
+                    <h3>💡 Hint</h3>
+                    <p>${puzzle.hint || 'Try to find the tactic!'}</p>
+                `;
+            }
+        }
+
+        function showSolution() {
+            const puzzle = puzzles[currentPuzzleIndex];
+            if (!puzzle) return;
+
+            clearArrows();
+
+            // Parse and show solution moves
+            const tempGame = new Chess(puzzle.fen);
+            const moves = puzzle.solution
+                .replace(/\d+\./g, '')
+                .trim()
+                .split(/\s+/);
+
+            for (const san of moves) {
+                const move = tempGame.move(san);
+                if (move) {
+                    const color = move.color === 'w' ? 'green' : 'blue';
+                    drawArrow(move.from, move.to, color);
+                    highlightSquareCustom(move.to, color);
+                }
+            }
+
+            // Update explanation
+            const explanationElement = document.getElementById('explanation');
+            explanationElement.innerHTML = `
+                <h3>🎯 Solution Revealed!</h3>
+                <p><strong>${puzzle.solution}</strong></p>
+                <p>${puzzle.description}</p>
+                <p><em>The arrows show the solution sequence!</em></p>
+            `;
+        }
+
+        async function play_the_SAN_moves() {
+            const puzzle = puzzles[currentPuzzleIndex];
+            if (!puzzle) return;
+
+            clearArrows();
+            board.position(game.fen());
+
+            const moves = puzzle.solution.replace(/\d+\./g, '').trim().split(/\s+/);
+
+            for (let san of moves) {
+                try {
+                    const move = game.move(san);
+                    if (!move) {
+                        console.error("Invalid SAN:", san);
+                        continue;
+                    }
+
+                    board.position(game.fen());
+                    updateMoveHistory();
+                    updateStatus();
+
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                } catch (e) {
+                    console.error("Error while playing move:", san, e);
+                    continue;
+                }
+            }
+        }
+
+        function resetPosition() {
+            console.log('in resetpositioncurrentPuzzleIndex=',currentPuzzleIndex);
+             const startPosInput = document.getElementById('startPosition');
+            //const startPos = parseInt(startPosInput.value || '1', 10);
+            
+            startPosInput.value=[currentPuzzleIndex+1];//-1
+                        
+            loadNextPuzzle();
+            if (!puzzle) return;
+
+            clearArrows();
+        }
+
+        function undoMove() {
+            // Store current evaluation as previous for next move
+            //previousEvaluation = currentEvaluation;
+
+            game.undo();
+            board.position(game.fen());
+            updateStatus();
+            updateMoveHistory();
+
+            // Clear move quality and request new evaluation
+            document.getElementById('moveQuality').textContent = '';
+            isAwaitingEvaluation = false;
+                        console.log('now calling requestevaluation from undoMove aus')
+                        console.log('akzuell game_fen=', game.fen())
+            setTimeout(() => requestEvaluation(), 100);
+
+            const explanationElement = document.getElementById('explanation');
+            explanationElement.innerHTML = `
+                <h3>↶ Move Undone!</h3>
+                <p>No worries! Let's try a different move. What else do you see in this position?</p>
+            `;
+        }
+
+        function updateStatus() {
+            let status = '';
+            let moveColor = game.turn() === 'w' ? 'White' : 'Black';
+            console.log('side_to_move:', game.turn());
+            const statusElement = document.getElementById('status');
+            const turnIndicator = document.getElementById('turnIndicator');
+
+            if (game.in_checkmate()) {
+                status = `Game over! ${moveColor === 'White' ? 'Black' : 'White'} wins by checkmate! 🏆`;
+                statusElement.className = 'status';
+            } else if (game.in_draw()) {
+                status = 'Game over - Draw! 🤝';
+                statusElement.className = 'status';
+            } else {
+                status = `${moveColor} to move`;
+                statusElement.className = `status ${moveColor.toLowerCase()}`;
+
+                if (game.in_check()) {
+                    status += ' (in check! 👑)';
+                }
+            }
+
+            statusElement.innerHTML = status;
+
+            // Update turn indicator
+            if (turnIndicator) {
+                turnIndicator.textContent = game.turn() === 'w' ? '🌼' : '🌷';
+            }
+        }
+
+        function updateMoveHistory() {
+            const historyElement = document.getElementById('moveHistory');
+            const history = game.history();
+            let historyHtml = '';
+
+            for (let i = 0; i < history.length; i++) {
+                if (i % 2 === 0) {
+                    historyHtml += `<span class="move">${Math.floor(i / 2) + 1}. ${history[i]}</span>`;
+                } else {
+                    historyHtml += `<span class="move">${history[i]}</span>`;
+                }
+            }
+
+            historyElement.innerHTML = historyHtml;
+        }
+
+        // JSON loading functions
+        function newloadJsonFromTextarea() {
+            const textarea = document.getElementById('jsonTextarea');
+            const jsonText = textarea.value.trim();
+
+            if (!jsonText) {
+                alert('Please paste some JSON data into the textarea first!');
+                return;
+            }
+
+            try {
+                const jsonData = JSON.parse(jsonText);
+
+                let extractedPuzzles = null;
+
+                if (jsonData.tactical_motifs && Array.isArray(jsonData.tactical_motifs)) {
+                    extractedPuzzles = jsonData.tactical_motifs;
+                } else if (jsonData.puzzles && Array.isArray(jsonData.puzzles)) {
+                    extractedPuzzles = jsonData.puzzles;
+                } else if (Array.isArray(jsonData)) {
+                    extractedPuzzles = jsonData;
+                } else {
+                    const arrayKeys = Object.keys(jsonData).filter(key => Array.isArray(jsonData[key]));
+                    if (arrayKeys.length > 0) {
+                        extractedPuzzles = jsonData[arrayKeys[0]];
+                    } else {
+                        extractedPuzzles = [jsonData];
+                    }
+                }
+
+                if (extractedPuzzles && extractedPuzzles.length > 0) {
+                    puzzles = extractedPuzzles;
+                    currentPuzzleIndex = 0;
+
+                    document.getElementById('puzzleSetSelector').value = '';
+
+                    const fileStatusEl = document.getElementById('fileStatus');
+                    fileStatusEl.textContent = `✅ Loaded ${puzzles.length} puzzles from textarea`;
+                    fileStatusEl.style.color = '#22c55e';
+
+                    console.log(`✅ Textarea JSON loaded with ${puzzles.length} puzzles`);
+
+                    document.getElementById('startPosition').value = '1';
+                    loadNextPuzzle();
+                } else {
+                    throw new Error('No valid puzzle array found in JSON data');
+                }
+
+            } catch (error) {
+                console.error('❌ Error parsing textarea JSON:', error);
+                alert(`Could not parse the JSON data: ${error.message}`);
+
+                const fileStatusEl = document.getElementById('fileStatus');
+                fileStatusEl.textContent = `❌ JSON Error: ${error.message}`;
+                fileStatusEl.style.color = '#ef4444';
+            }
+        }
+
+        function loadCustomJson() {
+            document.getElementById('customJsonInput').click();
+        }
+// file input loader (fixed)
+document.getElementById('customJsonInput').addEventListener('change', async function (event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const fileStatusEl = document.getElementById('fileStatus');
+  fileStatusEl.textContent = 'Loading...';
+
+  try {
+    const textContent = await file.text();
+    const jsonData = JSON.parse(textContent);
+    const extracted = extractPuzzlesFromAny(jsonData);
+    if (!extracted || !extracted.length) throw new Error('No valid puzzle array found');
+
+    puzzles = extracted;
+    currentPuzzleIndex = 0;
+
+    // clear the select to indicate we're using a custom file now
+    document.getElementById('puzzleSetSelector').value = '';
+
+    fileStatusEl.textContent = `✅ Loaded ${puzzles.length} puzzles from ${file.name}`;
+    fileStatusEl.style.color = '#22c55e';
+
+    loadNextPuzzle();
+  } catch (error) {
+    console.error('❌ Error loading custom JSON:', error);
+    fileStatusEl.textContent = `❌ Error: ${error.message}`;
+    fileStatusEl.style.color = '#ef4444';
+    alert('Could not load the JSON file. Please check the file format.');
+  } finally {
+    // allow re-selecting the same file
+    event.target.value = '';
+  }
+});
+
+        // Puzzle set selector
+       document.getElementById('puzzleSetSelector').addEventListener('change', async function () {
+  const selectedFile = this.value;
+  const fileStatusEl = document.getElementById('fileStatus');
+  fileStatusEl.textContent = '';
+  if (!selectedFile) return;
+
+  const fullPath = 'puzzles_files/' + selectedFile;
+
+  try {
+    const res = await fetch(fullPath, { cache: 'no-store' }); // avoid stale cache
+    if (!res.ok) throw new Error(`HTTP ${res.status} for ${fullPath}`);
+
+    const txt = await res.text(); // easier to debug bad JSON
+    let data;
+    try { data = JSON.parse(txt); }
+    catch (e) {
+      console.error('Bad JSON text:', txt.slice(0, 400));
+      throw new Error(`JSON parse error: ${e.message}`);
+    }
+
+    const extracted = extractPuzzlesFromAny(data);
+    if (!extracted || !extracted.length) {
+      console.debug('Loaded data shape:', Array.isArray(data) ? 'array' : typeof data, data && Object.keys(data));
+      throw new Error('No puzzle array found in file');
+    }
+
+    puzzles = extracted;
+    currentPuzzleIndex = 0;
+
+    fileStatusEl.textContent = `✅ Loaded ${puzzles.length} puzzles from ${selectedFile}`;
+    fileStatusEl.style.color = '#22c55e';
+
+    console.log(`✅ Loaded puzzle set: ${selectedFile} (${puzzles.length} puzzles)`);
+    // optional quick sanity check
+    // console.log('First puzzle:', puzzles[0] && puzzles[0].fen, puzzles[0] && puzzles[0].solution);
+
+    loadNextPuzzle();
+  } catch (err) {
+    console.error('❌ Error loading puzzle set:', err);
+    alert('Could not load the selected puzzle set. ' + err.message);
+  }
+});
+
+
+        // Initialize the application
+        window.onload = function () {
+            console.log('Page loaded, initializing...');
+
+            // Pre-fill textarea with example puzzles
+            const textarea = document.getElementById('jsonTextarea');
+            const exampleJson = [
+                {
+                    "fen": "r1b3kr/ppp1Bp1p/1b6/n2P4/2p3q1/2Q2N2/P4PPP/RN2R1K1 w - - 0 1",
+                    "solution": "1. Qxh8+ Kxh8 2. Bf6+ Kg8 3. Re8#",
+                    "theme": "mate in 3",
+                    "description": "William Evans vs Alexander MacDonnell, London, 1829",
+                    "hint": "Look for a forcing sacrifice!",
+                    "highlight_squares": [],
+                    "arrows": [
+                        { "from": "c3", "to": "h8", "color": "green" },
+                        { "from": "g8", "to": "h8", "color": "blue" },
+                        { "from": "e7", "to": "f6", "color": "green" },
+                        { "from": "h8", "to": "g8", "color": "blue" },
+                        { "from": "e1", "to": "e8", "color": "green" }
+                    ]
+                },
+                {
+                    "fen": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
+                    "solution": "1...d5",
+                    "theme": "opening",
+                    "description": "Basic opening response",
+                    "hint": "Control the center!",
+                    "highlight_squares": [
+                        { "square": "d5", "color": "yellow" }
+                    ],
+                    "arrows": [
+                        { "from": "d7", "to": "d5", "color": "green" }
+                    ]
+                },
+                {
+                    "fen": "r2qkb1r/pp2nppp/3p1n2/2pP4/2P1P3/2N2N2/PP1B1PPP/R2QKB1R w KQkq c6 0 6",
+                    "solution": "1. dxc6",
+                    "theme": "pawn capture",
+                    "description": "En passant capture",
+                    "hint": "Special pawn rule applies here!",
+                    "highlight_squares": [
+                        { "square": "c6", "color": "green" }
+                    ],
+                    "arrows": [
+                        { "from": "d5", "to": "c6", "color": "green" }
+                    ]
+                }
+            ];
+            textarea.value = JSON.stringify(exampleJson, null, 2);
+
+            // Initialize components
+            setTimeout(() => {
+                initEngine();
+                initBoard();
+                // Warten bis Board steht, dann erst Puzzles laden
+                let tries = 0;
+                (function waitForBoard() {
+                    if (board) return setTimeout(loadNextPuzzle, 200);
+                    if (++tries > 200) return console.error('No board; not calling loadNextPuzzle.');
+                    setTimeout(waitForBoard, 100);
+                })();
+            }, 100);
+// Force select Mate in Three as startup default
+const selector = document.getElementById('puzzleSetSelector');
+selector.value = "harvey_mate_in_3.json";
+// Trigger the same logic as if user selected it
+selector.dispatchEvent(new Event('change'));
+
+        };
+
+    </script>
+
+<!-- In your big HTML, just include this one line (near the end of <body>) -->
+<script src="trainer_persona_launchbar.js" defer></script>
+
+
+<div id="app-footer"></div>
+<script>
+  (function(){
+    fetch('/footer.html',{cache:'no-store'})
+      .then(r=>r.text())
+      .then(html=>{ document.getElementById('app-footer').outerHTML = html; })
+      .catch(()=>{ /* optional: Fallback */ });
+  })();
+</script>
+
+
+
+</body>
+
+</html>
+
+
+
+
+
+
